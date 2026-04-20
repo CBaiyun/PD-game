@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>钓鱼试玩</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a3a52;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #wrap {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      height: 100%;
+      margin: 0 auto;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #hud {
+      position: absolute;
+      top: 8px;
+      left: 0;
+      right: 0;
+      padding: 0 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff;
+      font-size: 14px;
+      text-shadow: 0 1px 2px rgba(0,0,0,.6);
+      pointer-events: none;
+    }
+    #coinUI {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transform: scale(3);
+      transform-origin: left top;
+    }
+    #coinIcon {
+      width: 14px;
+      height: 14px;
+      object-fit: contain;
+    }
+    #coinValue {
+      font-weight: 700;
+      color: #fff7c2;
+      min-width: 14px;
+      text-align: left;
+    }
+    #overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      z-index: 10;
+    }
+    #overlay.visible { display: flex; }
+    #overlay h2 {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    #cta {
+      padding: 14px 48px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a3a52;
+      background: linear-gradient(180deg, #ffeb3b 0%, #ffc107 100%);
+      border: none;
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(255, 193, 7, 0.45);
+      cursor: pointer;
+    }
+    #cta:active { transform: scale(0.98); }
+    .hint {
+      position: absolute;
+      bottom: 88px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(255,255,255,.85);
+      font-size: 13px;
+      pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0,0,0,.5);
+    }
+    #bottomBar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 168px;
+      padding: 0 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 6;
+      background: none;
+      pointer-events: auto;
+    }
+    #upgradeBtn {
+      width: min(58vw, 240px);
+      aspect-ratio: 1024 / 335;
+      padding: 0;
+      font-size: 0;
+      color: transparent;
+      background-color: transparent;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: cover;
+      border: none;
+      border-radius: 999px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.35);
+      cursor: pointer;
+      transition: transform .18s ease, filter .2s ease, box-shadow .2s ease, opacity .2s ease;
+    }
+    #upgradeBtn:active:not(:disabled) { transform: scale(0.98); }
+    #upgradeBtn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      filter: grayscale(0.35) brightness(0.95);
+    }
+    #upgradeBtn.ready {
+      animation: upgradeReadyPulse 1s ease-in-out infinite;
+      box-shadow: 0 0 16px rgba(255, 208, 74, 0.95), 0 0 28px rgba(255, 176, 43, 0.72), 0 4px 12px rgba(0,0,0,.32);
+      filter: saturate(1.08);
+    }
+    @keyframes upgradeReadyPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    #speciesOverlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 9;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.82);
+      pointer-events: auto;
+    }
+    #speciesOverlay.visible {
+      display: flex;
+    }
+    #speciesCanvasWrap {
+      position: relative;
+      width: min(88vw, 360px);
+      height: min(42vw, 200px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #speciesCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      filter: drop-shadow(0 0 28px rgba(255, 220, 120, 0.95))
+        drop-shadow(0 0 48px rgba(100, 200, 255, 0.55));
+      animation: fishGlowPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes fishGlowPulse {
+      0%, 100% { filter: drop-shadow(0 0 22px rgba(255, 220, 120, 0.9)) drop-shadow(0 0 40px rgba(80, 180, 255, 0.5)); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 36px rgba(255, 240, 160, 1)) drop-shadow(0 0 64px rgba(120, 220, 255, 0.75)); transform: scale(1.04); }
+    }
+    #speciesName {
+      margin-top: 20px;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0,0,0,.8);
+    }
+    #speciesTag {
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c" aria-label="钓鱼游戏"></canvas>
+    <div id="hud">
+      <span id="coinUI">
+        <img id="coinIcon" alt="金币" src="assets/ui/coin.png" />
+        <span id="coinValue">0</span>
+      </span>
+      <span id="timeLabel">剩余: 25.0s</span>
+    </div>
+    <p class="hint" id="hint">点击抛竿 · 角力时快速连点</p>
+    <div id="bottomBar">
+      <button type="button" id="upgradeBtn">升级鱼竿</button>
+    </div>
+    <div id="speciesOverlay" aria-hidden="true">
+      <div id="speciesCanvasWrap">
+        <canvas id="speciesCanvas" width="360" height="200"></canvas>
+      </div>
+      <p id="speciesName"></p>
+      <p id="speciesTag">新图鉴解锁</p>
+    </div>
+    <div id="overlay">
+      <h2>时间到！</h2>
+      <button type="button" id="cta">立即下载</button>
+    </div>
+  </div>
+  <script>
+(function () {
+  'use strict';
+
+  /** 全局：试玩总时长（秒） */
+  const PLAY_DURATION_SEC = 25;
+  /** 角力：成功需在此时长内将进度打满（秒） */
+  const STRUGGLE_SUCCESS_WINDOW_SEC = 2;
+  /** 角力：连续未点击超过此时长则鱼逃跑（秒） */
+  const STRUGGLE_IDLE_ESCAPE_SEC = 1.2;
+  /** 未点击时每帧进度衰减（0~1） */
+  const STRUGGLE_DECAY_PER_SEC = 0.35;
+  /** 拉扯进度：普通鱼 */
+  const TAP_GAIN_NORMAL_ROD1 = 0.14;
+  const TAP_GAIN_NORMAL_ROD2 = 0.19;
+  const TAP_GAIN_NORMAL_ROD3 = 0.26;
+  /** 拉扯进度：高级鱼（1 级极低；2 级中等；3 级高） */
+  const TAP_GAIN_ADVANCED_ROD1 = 0.016;
+  const TAP_GAIN_ADVANCED_ROD2 = 0.11;
+  const TAP_GAIN_ADVANCED_ROD3 = 0.27;
+  /** 抛竿线最短/最大长度（相对画布高度比例） */
+  const CAST_MIN_RATIO = 0.18;
+  const CAST_MAX_RATIO = 1.44;
+  /** 按住蓄力达到满抛所需时长（秒） */
+  const CAST_CHARGE_MAX_SEC = 1.1;
+  /** 各级抛竿 / 收线速度（像素/秒） */
+  const CAST_SPEED_ROD1 = 980;
+  const RETRACT_SPEED_ROD1 = 1100;
+  const CAST_SPEED_ROD2 = 1320;
+  const RETRACT_SPEED_ROD2 = 1320;
+  const CAST_SPEED_ROD3 = 1680;
+  const RETRACT_SPEED_ROD3 = 1580;
+  /** 鱼竿最高等级 */
+  const ROD_MAX_LEVEL = 3;
+  /** Lv.1 → Lv.2、Lv.2 → Lv.3 升级金币 */
+  const ROD_UPGRADE_COST_1_2 = 38;
+  const ROD_UPGRADE_COST_2_3 = 72;
+  /** 钓上普通鱼金币 */
+  const COIN_NORMAL_MIN = 8;
+  const COIN_NORMAL_MAX = 16;
+  /** 钓上高级鱼金币 */
+  const COIN_ADVANCED = 52;
+  /** 回收飞行动画时长（秒） */
+  const CATCH_FLY_DURATION = 0.58;
+  /** 新品种特写时长（秒） */
+  const SPECIES_SHOWCASE_SEC = 2;
+  /** 新品种特写至少展示多久才允许点击关闭（秒） */
+  const SPECIES_SHOWCASE_MIN_CLICK_SEC = 1;
+  /** 失败提示图显示时长（秒） */
+  const FAIL_STAMP_SEC = 1;
+  /** 飞向金币 UI 的粒子数量系数 */
+  const COIN_PARTICLE_PER_GAIN = 0.35;
+  /** 水面游鱼数量（始终保持） */
+  const TARGET_SWIMMING_FISH = 8;
+  /** 累计采集金币达到该值后才开始刷出高级鱼 */
+  const ADVANCED_UNLOCK_COINS = 30;
+  /** 鱼游出屏幕判定边距 */
+  const OFFSCREEN_MARGIN = 72;
+
+  const FishTier = { NORMAL: 0, ADVANCED: 1 };
+  const ROD_SKIN_URLS = {
+    1: {
+      rod: "assets/rods/rod_lv1.png",
+      lure: "assets/rods/lure_lv1.png",
+    },
+    2: {
+      rod: "assets/rods/rod_lv2.png",
+      lure: "assets/rods/lure_lv2.png",
+    },
+    3: {
+      rod: "assets/rods/rod_lv3.png",
+      lure: "assets/rods/lure_lv3.png",
+    },
+  };
+  const FISH_ART_URLS = [
+    "assets/fish/fish_1.png",
+    "assets/fish/fish_2.png",
+    "assets/fish/fish_3.png",
+    "assets/fish/fish_4.png",
+    "assets/fish/fish_5.png",
+    "assets/fish/fish_6.png",
+    "assets/fish/fish_7.png",
+    "assets/fish/fish_8.png",
+  ];
+  const CAST_PROMPT_IMAGE_URL = "assets/ui/tap_to_cast.png";
+  const FAIL_STAMP_IMAGE_URL = "assets/ui/fail.png";
+  const UPGRADE_BTN_LV2_URL = "assets/ui/upgrade_lv2.png";
+  const UPGRADE_BTN_LV3_URL = "assets/ui/upgrade_lv3.png";
+  const AUDIO_URLS = {
+    popupFish: "assets/audio/popup_fish.wav",
+    lineCast: "assets/audio/line_cast.mp3",
+    hookOut: "assets/audio/hook_out.wav",
+    bgm: "assets/audio/bgm.mp3",
+    coinGain: "assets/audio/coin_gain.mp3",
+  };
+
+  function loadImageAsset(src) {
+    const img = new Image();
+    img.src = src;
+    return img;
+  }
+
+  function buildRodSkins() {
+    return {
+      1: {
+        rod: loadImageAsset(ROD_SKIN_URLS[1].rod),
+        lure: loadImageAsset(ROD_SKIN_URLS[1].lure),
+      },
+      2: {
+        rod: loadImageAsset(ROD_SKIN_URLS[2].rod),
+        lure: loadImageAsset(ROD_SKIN_URLS[2].lure),
+      },
+      3: {
+        rod: loadImageAsset(ROD_SKIN_URLS[3].rod),
+        lure: loadImageAsset(ROD_SKIN_URLS[3].lure),
+      },
+    };
+  }
+
+  const FISH_ART_IMAGES = FISH_ART_URLS.map((src) => loadImageAsset(src));
+  const CAST_PROMPT_IMAGE = loadImageAsset(CAST_PROMPT_IMAGE_URL);
+  const FAIL_STAMP_IMAGE = loadImageAsset(FAIL_STAMP_IMAGE_URL);
+
+  function getFishArtImage(speciesId) {
+    if (!FISH_ART_IMAGES.length) return null;
+    return FISH_ART_IMAGES[speciesId % FISH_ART_IMAGES.length];
+  }
+
+  /**
+   * 图鉴品种（决定外观与是否为高级鱼）
+   * id 用于判断是否首次钓获
+   */
+  const SPECIES_LIST = [
+    { id: 0, name: '紫影鲨', tier: FishTier.ADVANCED, hue: 320, baseW: 52, baseH: 24 },
+    { id: 1, name: '条纹乌贼', tier: FishTier.NORMAL, hue: 188, baseW: 48, baseH: 22 },
+    { id: 2, name: '幻光魔鬼鱼', tier: FishTier.ADVANCED, hue: 252, baseW: 50, baseH: 24 },
+    { id: 3, name: '蓝斑鲨', tier: FishTier.ADVANCED, hue: 214, baseW: 50, baseH: 23 },
+    { id: 4, name: '青纹小鱼', tier: FishTier.NORMAL, hue: 176, baseW: 44, baseH: 19 },
+    { id: 5, name: '翠脊鲈', tier: FishTier.NORMAL, hue: 162, baseW: 46, baseH: 21 },
+    { id: 6, name: '暮紫鲨', tier: FishTier.ADVANCED, hue: 256, baseW: 48, baseH: 22 },
+    { id: 7, name: '赤鳍鱼', tier: FishTier.NORMAL, hue: 8, baseW: 45, baseH: 20 },
+  ];
+
+  function pickSpeciesForSpawn(game) {
+    const allowAdv = game.totalCoinsCollected >= ADVANCED_UNLOCK_COINS;
+    const pool = allowAdv ? SPECIES_LIST : SPECIES_LIST.filter((s) => s.tier === FishTier.NORMAL);
+    return pool[(Math.random() * pool.length) | 0];
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  /**
+   * 在画布上绘制一条“鱼卡”矩形（与游戏中鱼风格一致，可放大）
+   */
+  function drawFishCard(ctx, cx, cy, w, h, hue, tier, globalScale, speciesId, facingSign) {
+    const adv = tier === FishTier.ADVANCED;
+    const fishImg = getFishArtImage(speciesId || 0);
+    const hasImg = !!(fishImg && fishImg.complete && fishImg.naturalWidth > 0);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(globalScale, globalScale);
+    if (hasImg) {
+      if (adv) {
+        ctx.shadowColor = 'rgba(255, 215, 0, 0.75)';
+        ctx.shadowBlur = 16;
+      }
+      const facing = facingSign == null || facingSign >= 0 ? 1 : -1;
+      ctx.scale(facing, 1);
+      ctx.drawImage(fishImg, -w / 2, -h / 2, w, h);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = adv ? `hsl(${hue}, 92%, 48%)` : `hsl(${hue}, 70%, 52%)`;
+      ctx.strokeStyle = adv ? 'rgba(255, 220, 120, 0.95)' : 'rgba(0,0,0,.28)';
+      ctx.lineWidth = adv ? 3 : 2;
+      ctx.shadowColor = adv ? 'rgba(255, 215, 0, 0.85)' : 'rgba(0,0,0,.2)';
+      ctx.shadowBlur = adv ? 20 : 6;
+      ctx.beginPath();
+      ctx.rect(-w / 2, -h / 2, w, h);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      if (adv) {
+        ctx.fillStyle = 'rgba(255,255,255,.4)';
+        ctx.fillRect(-w / 2 + 4, -h / 2 + 3, w * 0.35, 4);
+      }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * 飞向左上角金币 UI 的金币粒子
+   */
+  class CoinFlyParticle {
+    constructor(sx, sy, tx, ty, delay) {
+      this.sx = sx;
+      this.sy = sy;
+      this.tx = tx;
+      this.ty = ty;
+      this.delay = delay;
+      this.t = -delay;
+      this.dur = 0.42 + Math.random() * 0.22;
+    }
+    update(dt) {
+      this.t += dt;
+    }
+    get dead() {
+      return this.t >= this.dur;
+    }
+    draw(ctx) {
+      if (this.t < 0) return;
+      const u = Math.min(1, this.t / this.dur);
+      const e = easeOutCubic(u);
+      const x = this.sx + (this.tx - this.sx) * e;
+      const y = this.sy + (this.ty - this.sy) * e;
+      const r = 5 + (1 - u) * 4;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.65 * (1 - u * 0.4);
+      ctx.fillStyle = '#ffd54f';
+      ctx.strokeStyle = 'rgba(180, 120, 0, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      ctx.beginPath();
+      ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /**
+   * 倒计时 / 通用计时器（试玩 25 秒）
+   */
+  class PlayTimer {
+    constructor(durationSec, onTick, onComplete) {
+      this.durationSec = durationSec;
+      this.onTick = onTick;
+      this.onComplete = onComplete;
+      this.elapsed = 0;
+      this.finished = false;
+    }
+    reset() {
+      this.elapsed = 0;
+      this.finished = false;
+    }
+    update(dt) {
+      if (this.finished) return;
+      this.elapsed += dt;
+      const left = Math.max(0, this.durationSec - this.elapsed);
+      if (this.onTick) this.onTick(left);
+      if (this.elapsed >= this.durationSec) {
+        this.finished = true;
+        if (this.onComplete) this.onComplete();
+      }
+    }
+    get remaining() {
+      return Math.max(0, this.durationSec - this.elapsed);
+    }
+  }
+
+  /**
+   * 角力阶段专用：2 秒窗口 + 空闲逃跑计时
+   */
+  class StruggleTimer {
+    constructor() {
+      this.windowLeft = STRUGGLE_SUCCESS_WINDOW_SEC;
+      this.idleLeft = STRUGGLE_IDLE_ESCAPE_SEC;
+    }
+    start() {
+      this.windowLeft = STRUGGLE_SUCCESS_WINDOW_SEC;
+      this.idleLeft = STRUGGLE_IDLE_ESCAPE_SEC;
+    }
+    update(dt, tappedThisFrame) {
+      this.windowLeft = Math.max(0, this.windowLeft - dt);
+      if (tappedThisFrame) {
+        this.idleLeft = STRUGGLE_IDLE_ESCAPE_SEC;
+      } else {
+        this.idleLeft = Math.max(0, this.idleLeft - dt);
+      }
+    }
+    get windowExpired() {
+      return this.windowLeft <= 0;
+    }
+    get idleExpired() {
+      return this.idleLeft <= 0;
+    }
+  }
+
+  /**
+   * 屏幕飘字（奖励 / 夸张提示）
+   */
+  class FloatingText {
+    constructor(text, x, y, options) {
+      this.text = text;
+      this.x = x;
+      this.y = y;
+      this.vx = options.vx != null ? options.vx : (Math.random() * 40 - 20);
+      this.vy = options.vy != null ? options.vy : -160;
+      this.life = 1;
+      this.fontSize = options.fontSize != null ? options.fontSize : 40;
+      this.color = options.color || '#ffe066';
+      this.stroke = options.stroke || 'rgba(0,0,0,.55)';
+      this.lineWidth = options.lineWidth != null ? options.lineWidth : 4;
+      this.rotation = options.rotation != null ? options.rotation : (Math.random() * 0.2 - 0.1);
+      this.pulse = 0;
+    }
+    update(dt) {
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      this.vy += 40 * dt;
+      this.life -= dt * 0.85;
+      this.pulse += dt * 10;
+    }
+    get dead() {
+      return this.life <= 0;
+    }
+    draw(ctx) {
+      const s = 1 + Math.sin(this.pulse) * 0.06;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rotation);
+      ctx.scale(s, s);
+      ctx.globalAlpha = Math.max(0, this.life);
+      ctx.font = '900 ' + this.fontSize + 'px "Segoe UI","Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = this.lineWidth;
+      ctx.strokeStyle = this.stroke;
+      ctx.fillStyle = this.color;
+      ctx.strokeText(this.text, 0, 0);
+      ctx.fillText(this.text, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  class FailStamp {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.life = FAIL_STAMP_SEC;
+      this.total = FAIL_STAMP_SEC;
+    }
+    update(dt) {
+      this.life -= dt;
+    }
+    get dead() {
+      return this.life <= 0;
+    }
+    draw(ctx) {
+      if (!(FAIL_STAMP_IMAGE && FAIL_STAMP_IMAGE.complete && FAIL_STAMP_IMAGE.naturalWidth > 0)) return;
+      const p = Math.max(0, this.life / this.total);
+      const alpha = Math.min(1, p * 1.3);
+      const appear = 1 - p;
+      const bounce = Math.sin(Math.min(1, appear * 1.8) * Math.PI) * 16 * (1 - appear * 0.35);
+      const sizeW = Math.min(220, Math.max(120, FAIL_STAMP_IMAGE.naturalWidth * 0.42));
+      const sizeH = sizeW * (FAIL_STAMP_IMAGE.naturalHeight / FAIL_STAMP_IMAGE.naturalWidth);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(FAIL_STAMP_IMAGE, this.x - sizeW * 0.5, this.y - sizeH * 0.75 - bounce, sizeW, sizeH);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * 鱼：从屏外游入并游出；由 Game 维持数量与是否可刷高级鱼
+   */
+  class Fish {
+    constructor(pool) {
+      this.pool = pool;
+      this.speciesId = 0;
+      this.speciesName = '';
+      this.tier = FishTier.NORMAL;
+      this.hue = 0;
+      this.width = 40;
+      this.height = 20;
+      this.x = 0;
+      this.y = 0;
+      this.vx = 0;
+      this.jitterPhase = 0;
+      this.facingSign = 1;
+      this.coinReward = COIN_NORMAL_MIN;
+    }
+
+    /**
+     * @param {Game} game
+     */
+    spawnAsSwimmer(game) {
+      const w = game.pool.w;
+      const h = game.pool.h;
+      const sp = pickSpeciesForSpawn(game);
+      this.speciesId = sp.id;
+      this.speciesName = sp.name;
+      this.tier = sp.tier;
+      this.hue = sp.hue + (Math.random() * 14 - 7);
+      const sizeScale = this.tier === FishTier.ADVANCED ? 4 : 2;
+      this.width = sp.baseW * sizeScale * (0.9 + Math.random() * 0.22);
+      this.height = sp.baseH * sizeScale * (0.88 + Math.random() * 0.24);
+      const bandTop = h * 0.08;
+      const bandBottom = h * 0.48;
+      this.y = bandTop + Math.random() * Math.max(8, bandBottom - bandTop - this.height);
+      const fromLeft = Math.random() < 0.5;
+      const gap = 30 + Math.random() * 120;
+      if (this.tier === FishTier.ADVANCED) {
+        const speed = 72 + Math.random() * 58;
+        this.coinReward = COIN_ADVANCED;
+        if (fromLeft) {
+          this.x = -this.width - gap;
+          this.vx = speed;
+        } else {
+          this.x = w + gap;
+          this.vx = -speed;
+        }
+      } else {
+        const speed = 42 + Math.random() * 88;
+        this.coinReward = COIN_NORMAL_MIN + ((Math.random() * (COIN_NORMAL_MAX - COIN_NORMAL_MIN + 1)) | 0);
+        if (fromLeft) {
+          this.x = -this.width - gap;
+          this.vx = speed;
+        } else {
+          this.x = w + gap;
+          this.vx = -speed;
+        }
+      }
+      this.jitterPhase = Math.random() * Math.PI * 2;
+      // 素材默认朝左：向右游时翻转，保证鱼头始终朝运动方向
+      this.facingSign = this.vx >= 0 ? -1 : 1;
+    }
+
+    get left() { return this.x; }
+    get top() { return this.y; }
+    get right() { return this.x + this.width; }
+    get bottom() { return this.y + this.height; }
+
+    isFullyOffScreen(canvasW) {
+      return this.right < -OFFSCREEN_MARGIN || this.left > canvasW + OFFSCREEN_MARGIN;
+    }
+
+    updateSwim(dt) {
+      this.x += this.vx * dt;
+    }
+
+    updateStruggleJitter(dt) {
+      this.jitterPhase += dt * 14;
+      const amp = 5;
+      this._jitterX = Math.sin(this.jitterPhase) * amp;
+    }
+
+    draw(ctx, struggle, hooked) {
+      const jx = struggle && hooked ? (this._jitterX || 0) : 0;
+      drawFishCard(
+        ctx,
+        this.x + jx + this.width * 0.5,
+        this.y + this.height * 0.5,
+        this.width,
+        this.height,
+        this.hue,
+        this.tier,
+        1,
+        this.speciesId,
+        this.facingSign
+      );
+      const labelX = this.x + jx + this.width * 0.5;
+      const labelY = this.y + this.height * 0.58;
+      ctx.save();
+      ctx.font = 'bold ' + Math.max(14, Math.round(this.height * 0.22)) + 'px "Segoe UI","Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,.65)';
+      ctx.fillStyle = this.tier === FishTier.ADVANCED ? '#fff4a8' : '#ffffff';
+      const text = '+' + this.coinReward;
+      ctx.strokeText(text, labelX, labelY);
+      ctx.fillText(text, labelX, labelY);
+      ctx.restore();
+    }
+
+    intersectsPoint(px, py) {
+      return px >= this.left && px <= this.right && py >= this.top && py <= this.bottom;
+    }
+
+    intersectsVerticalLine(lineX, y0, y1) {
+      const top = Math.min(y0, y1);
+      const bot = Math.max(y0, y1);
+      if (lineX < this.left || lineX > this.right) return false;
+      if (bot < this.top || top > this.bottom) return false;
+      return true;
+    }
+  }
+
+  /**
+   * 鱼竿与鱼线：自底部中央垂直向上；等级影响配色与抛射参数
+   */
+  class Rod {
+    constructor() {
+      this.lineLen = 0;
+      this.targetLen = 0;
+      this.rodBaseX = 0;
+      this.rodBaseY = 0;
+      this.skins = buildRodSkins();
+      /** @type {1|2|3} */
+      this.level = 1;
+    }
+    getCastSpeed() {
+      if (this.level >= 3) return CAST_SPEED_ROD3;
+      if (this.level >= 2) return CAST_SPEED_ROD2;
+      return CAST_SPEED_ROD1;
+    }
+    getRetractSpeed() {
+      if (this.level >= 3) return RETRACT_SPEED_ROD3;
+      if (this.level >= 2) return RETRACT_SPEED_ROD2;
+      return RETRACT_SPEED_ROD1;
+    }
+    layout(w, h) {
+      this.rodBaseX = w / 2;
+      this.rodBaseY = h - 28;
+    }
+    getTipY() {
+      return this.rodBaseY - this.lineLen;
+    }
+    setCasting(maxLen) {
+      this.targetLen = maxLen;
+    }
+    extend(dt, speed) {
+      if (this.lineLen < this.targetLen) {
+        this.lineLen = Math.min(this.targetLen, this.lineLen + speed * dt);
+        return this.lineLen >= this.targetLen;
+      }
+      return true;
+    }
+    retract(dt, speed) {
+      if (this.lineLen > 0) {
+        this.lineLen = Math.max(0, this.lineLen - speed * dt);
+        return this.lineLen <= 0;
+      }
+      return true;
+    }
+    resetLine() {
+      this.lineLen = 0;
+      this.targetLen = 0;
+    }
+
+    draw(ctx, w, h, state, hookFacing) {
+      const x = this.rodBaseX;
+      const baseY = this.rodBaseY;
+      const lv = this.level;
+      let lineColor = '#c8e0f0';
+      let lineW = 2;
+      let lineGlow = 'transparent';
+      let lineBlur = 0;
+      if (lv >= 3) {
+        lineColor = '#e0f8ff';
+        lineW = 3;
+        lineGlow = 'rgba(180, 255, 255, 0.75)';
+        lineBlur = 10;
+      } else if (lv >= 2) {
+        lineColor = '#7ee8ff';
+        lineW = 3;
+        lineGlow = 'rgba(120, 230, 255, 0.5)';
+        lineBlur = 6;
+      }
+      const skin = this.skins[lv] || this.skins[1];
+      const rodImg = skin ? skin.rod : null;
+      const lureImg = skin ? skin.lure : null;
+      const rodLoaded = !!(rodImg && rodImg.complete && rodImg.naturalWidth > 0);
+      const lureLoaded = !!(lureImg && lureImg.complete && lureImg.naturalWidth > 0);
+      const rodLengthPx = Math.max(180, h * 0.25);
+      const rodAspect = rodLoaded ? (rodImg.naturalHeight / rodImg.naturalWidth) : 0.24;
+      const rodHeightPx = rodLengthPx * rodAspect;
+      const rodCenterX = x + 6;
+      const rodCenterY = baseY - 2;
+      if (rodLoaded) {
+        ctx.save();
+        ctx.translate(rodCenterX, rodCenterY);
+        ctx.rotate(-0.18);
+        ctx.drawImage(rodImg, -rodLengthPx * 0.52, -rodHeightPx * 0.5, rodLengthPx, rodHeightPx);
+        ctx.restore();
+      } else {
+        ctx.strokeStyle = '#3d2f1f';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - 40, baseY + 10);
+        ctx.lineTo(x + 60, baseY - 5);
+        ctx.stroke();
+      }
+      if (this.lineLen > 1) {
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = lineW;
+        ctx.shadowColor = lineGlow;
+        ctx.shadowBlur = lineBlur;
+        ctx.beginPath();
+        ctx.moveTo(x, baseY);
+        ctx.lineTo(x, baseY - this.lineLen);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        if (lureLoaded) {
+          const lureSize = Math.max(44, h * 0.06);
+          const lureCx = x;
+          const lureCy = baseY - this.lineLen + lureSize * 0.15;
+          const facing = hookFacing >= 0 ? 1 : -1;
+          ctx.save();
+          ctx.translate(lureCx, lureCy);
+          ctx.scale(facing, 1);
+          ctx.drawImage(lureImg, -lureSize * 0.5, -lureSize * 0.5, lureSize, lureSize);
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  /**
+   * 主游戏与状态机
+   */
+  const State = {
+    IDLE: 'idle',
+    CASTING: 'casting',
+    RETRACTING: 'retracting',
+    STRUGGLE: 'struggle',
+    CATCH_SUCCESS: 'catch_success',
+    SPECIES_SHOWCASE: 'species_showcase',
+    ENDED: 'ended',
+  };
+
+  class Game {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.w = 0;
+      this.h = 0;
+      this.state = State.IDLE;
+      this.fishes = [];
+      /** 成功钓获条数 */
+      this.totalCatches = 0;
+      /** 累计采集金币（不受花费影响） */
+      this.totalCoinsCollected = 0;
+      /** @type {{ w: number, h: number, hue: number, tier: number, speciesId: number, facingSign: number }[]} */
+      this.basketFish = [];
+      this._pendingBasketSnapshot = null;
+      this.rod = new Rod();
+      this.playTimer = new PlayTimer(
+        PLAY_DURATION_SEC,
+        (left) => this.updateHudTime(left),
+        () => this.endPlay()
+      );
+      this.struggleTimer = new StruggleTimer();
+      this.hookedFish = null;
+      this.progress = 0;
+      this.coins = 0;
+      /** @type {FloatingText[]} */
+      this.floatTexts = [];
+      /** @type {FailStamp[]} */
+      this.failStamps = [];
+      /** @type {CoinFlyParticle[]} */
+      this.coinParticles = [];
+      this.discoveredSpecies = new Set();
+      this._catchAnim = null;
+      this._pendingSpeciesShowcase = false;
+      this._showcaseLeft = 0;
+      this._showcaseClickUnlockLeft = 0;
+      this.pool = { w: 0, h: 0 };
+      this._lastTs = 0;
+      this._isChargingCast = false;
+      this._castChargeStartTs = 0;
+      this.showCastPromptImage = true;
+      this.audioUnlocked = false;
+      this.bgmAudio = new Audio(AUDIO_URLS.bgm);
+      this.bgmAudio.loop = true;
+      this.bgmAudio.volume = 0.35;
+      this.lineCastAudio = new Audio(AUDIO_URLS.lineCast);
+      this.lineCastAudio.loop = true;
+      this.lineCastAudio.volume = 0.6;
+      this.sfxVolume = {
+        popupFish: 0.72,
+        hookOut: 0.68,
+        coinGain: 0.75,
+      };
+      this._resize();
+      window.addEventListener('resize', () => this._resize());
+    }
+
+    _resize() {
+      const r = this.canvas.parentElement || this.canvas;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.w = r.clientWidth;
+      this.h = r.clientHeight;
+      this.canvas.width = this.w * dpr;
+      this.canvas.height = this.h * dpr;
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.pool.w = this.w;
+      this.pool.h = this.h;
+      this.rod.layout(this.w, this.h);
+      if (this.fishes.length === 0) {
+        for (let i = 0; i < TARGET_SWIMMING_FISH; i++) {
+          const f = new Fish(this.pool);
+          f.spawnAsSwimmer(this);
+          this.fishes.push(f);
+        }
+      }
+    }
+
+    /** 游鱼直线游动、出屏删除并补满 8 条；角力中的鱼不移动也不删除 */
+    _tickSwimmingFish(dt) {
+      const hooked = this.state === State.STRUGGLE ? this.hookedFish : null;
+      for (let i = this.fishes.length - 1; i >= 0; i--) {
+        const f = this.fishes[i];
+        if (f === hooked) continue;
+        f.updateSwim(dt);
+        if (f.isFullyOffScreen(this.w)) {
+          this.fishes.splice(i, 1);
+        }
+      }
+      while (this.fishes.length < TARGET_SWIMMING_FISH) {
+        const nf = new Fish(this.pool);
+        nf.spawnAsSwimmer(this);
+        this.fishes.push(nf);
+      }
+    }
+
+    addFishToBasket(data) {
+      if (!data) return;
+      this.basketFish.push({
+        w: data.w,
+        h: data.h,
+        hue: data.hue,
+        tier: data.tier,
+        speciesId: data.speciesId,
+        facingSign: data.facingSign,
+      });
+    }
+
+    updateHudTime(left) {
+      const el = document.getElementById('timeLabel');
+      if (el) el.textContent = '剩余: ' + left.toFixed(1) + 's';
+    }
+
+    updateCoinDisplay() {
+      const el = document.getElementById('coinValue');
+      if (el) el.textContent = String(this.coins);
+      this.updateUpgradeButton();
+    }
+
+    updateUpgradeButton() {
+      const btn = document.getElementById('upgradeBtn');
+      if (!btn) return;
+      if (this.rod.level >= ROD_MAX_LEVEL) {
+        btn.textContent = '鱼竿 Lv.3（已满级）';
+        btn.style.backgroundImage = 'none';
+        btn.classList.remove('ready');
+        btn.title = '鱼竿已满级';
+        btn.disabled = true;
+        return;
+      }
+      const next = this.rod.level + 1;
+      const cost = this.rod.level === 1 ? ROD_UPGRADE_COST_1_2 : ROD_UPGRADE_COST_2_3;
+      const canUpgrade = this.coins >= cost;
+      const bg = next === 2 ? UPGRADE_BTN_LV2_URL : UPGRADE_BTN_LV3_URL;
+      btn.textContent = '升级到 Lv.' + next + '（' + cost + ' 金币）';
+      btn.style.backgroundImage = 'url("' + bg + '")';
+      btn.title = '升级到 Lv.' + next + '（' + cost + ' 金币）';
+      btn.disabled = !canUpgrade;
+      btn.classList.toggle('ready', canUpgrade);
+    }
+
+    tryUpgradeRod() {
+      if (this.playTimer.finished || this.state === State.ENDED) return;
+      if (this.rod.level >= ROD_MAX_LEVEL) return;
+      const cost = this.rod.level === 1 ? ROD_UPGRADE_COST_1_2 : ROD_UPGRADE_COST_2_3;
+      if (this.coins < cost) return;
+      this.coins -= cost;
+      this.rod.level++;
+      this.updateCoinDisplay();
+      this.setHint('鱼竿升至 Lv.' + this.rod.level + '！抛竿更快、拉扯更强');
+    }
+
+    getStruggleTapGain() {
+      const rodLv = this.rod.level;
+      const adv = this.hookedFish && this.hookedFish.tier === FishTier.ADVANCED;
+      if (adv) {
+        if (rodLv >= 3) return TAP_GAIN_ADVANCED_ROD3;
+        if (rodLv >= 2) return TAP_GAIN_ADVANCED_ROD2;
+        return TAP_GAIN_ADVANCED_ROD1;
+      }
+      if (rodLv >= 3) return TAP_GAIN_NORMAL_ROD3;
+      if (rodLv >= 2) return TAP_GAIN_NORMAL_ROD2;
+      return TAP_GAIN_NORMAL_ROD1;
+    }
+
+    _updateFloatingTexts(dt) {
+      for (let i = this.floatTexts.length - 1; i >= 0; i--) {
+        const ft = this.floatTexts[i];
+        ft.update(dt);
+        if (ft.dead) this.floatTexts.splice(i, 1);
+      }
+    }
+
+    _updateFailStamps(dt) {
+      for (let i = this.failStamps.length - 1; i >= 0; i--) {
+        const fs = this.failStamps[i];
+        fs.update(dt);
+        if (fs.dead) this.failStamps.splice(i, 1);
+      }
+    }
+
+    _updateCoinParticles(dt) {
+      for (let i = this.coinParticles.length - 1; i >= 0; i--) {
+        const p = this.coinParticles[i];
+        p.update(dt);
+        if (p.dead) this.coinParticles.splice(i, 1);
+      }
+    }
+
+    /** 鱼篓开口中心（画布坐标） */
+    getBasketCenter() {
+      return { x: 48, y: this.h - 76 };
+    }
+
+    /** 金币 HUD 目标点（画布坐标） */
+    getCoinHudPoint() {
+      const wrap = this.canvas.parentElement;
+      const label = document.getElementById('coinUI');
+      if (!wrap || !label) return { x: 72, y: 22 };
+      const wr = wrap.getBoundingClientRect();
+      const lr = label.getBoundingClientRect();
+      return {
+        x: lr.left + lr.width * 0.5 - wr.left,
+        y: lr.top + lr.height * 0.5 - wr.top,
+      };
+    }
+
+    spawnCoinParticles(sx, sy, gain) {
+      const t = this.getCoinHudPoint();
+      const n = Math.min(26, Math.max(8, Math.round(gain * COIN_PARTICLE_PER_GAIN + 6)));
+      for (let i = 0; i < n; i++) {
+        this.coinParticles.push(new CoinFlyParticle(sx, sy, t.x, t.y, i * 0.03));
+      }
+    }
+
+    drawBasket(ctx) {
+      const h = this.h;
+      const x0 = 6;
+      const bw = 86;
+      const topY = h - 118;
+      const botY = h - 22;
+      ctx.save();
+      ctx.fillStyle = 'rgba(101, 67, 33, 0.92)';
+      ctx.strokeStyle = 'rgba(40, 24, 10, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x0 + 8, topY);
+      ctx.lineTo(x0 + bw - 8, topY);
+      ctx.lineTo(x0 + bw - 2, botY - 8);
+      ctx.lineTo(x0 + bw * 0.5 + 6, botY);
+      ctx.lineTo(x0 + bw * 0.5 - 6, botY);
+      ctx.lineTo(x0 + 2, botY - 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.12)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        const yy = topY + 14 + i * 18;
+        ctx.beginPath();
+        ctx.moveTo(x0 + 14, yy);
+        ctx.lineTo(x0 + bw - 14, yy + 4);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.fillRect(x0 + 12, botY - 14, bw - 24, 8);
+      ctx.fillStyle = 'rgba(255,255,255,.15)';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('鱼篓', x0 + bw * 0.5, topY - 6);
+      this.drawBasketContents(ctx, x0, topY, botY, bw);
+      ctx.restore();
+    }
+
+    drawBasketContents(ctx, x0, topY, botY, bw) {
+      const list = this.basketFish;
+      if (!list.length) return;
+      const maxShow = 18;
+      const slice = list.length > maxShow ? list.slice(-maxShow) : list;
+      const cx = x0 + bw * 0.5;
+      const baseY = botY - 22;
+      slice.forEach((bf, i) => {
+        const sc = 0.2;
+        const col = i % 3;
+        const row = (i / 3) | 0;
+        const ox = (col - 1) * 13;
+        const oy = row * -5;
+        drawFishCard(ctx, cx + ox, baseY + oy, bf.w, bf.h, bf.hue, bf.tier, sc, bf.speciesId, bf.facingSign);
+      });
+    }
+
+    drawCatchFlyingFish(ctx) {
+      const a = this._catchAnim;
+      if (!a) return;
+      const p = Math.min(1, a.elapsed / a.dur);
+      const e = easeOutCubic(p);
+      const x = a.sx + (a.ex - a.sx) * e;
+      const y = a.sy + (a.ey - a.sy) * e;
+      const sc = 1 - e * 0.55;
+      drawFishCard(ctx, x, y, a.w, a.h, a.hue, a.tier, sc, a.speciesId, a.facingSign);
+    }
+
+    openSpeciesShowcase() {
+      const data = this._showcaseFishCard;
+      if (!data) {
+        this._finishCatchSequence();
+        return;
+      }
+      const sc = document.getElementById('speciesCanvas');
+      const ov = document.getElementById('speciesOverlay');
+      const nm = document.getElementById('speciesName');
+      if (!sc || !ov || !nm) {
+        this._finishCatchSequence();
+        return;
+      }
+      const sctx = sc.getContext('2d');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const cssW = 360;
+      const cssH = 200;
+      sc.width = cssW * dpr;
+      sc.height = cssH * dpr;
+      sc.style.width = cssW + 'px';
+      sc.style.height = cssH + 'px';
+      sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      sctx.clearRect(0, 0, cssW, cssH);
+      const scale = Math.min((cssW - 40) / data.w, (cssH - 40) / data.h) * 0.85;
+      drawFishCard(sctx, cssW / 2, cssH / 2, data.w, data.h, data.hue, data.tier, scale, data.speciesId, data.facingSign);
+      nm.textContent = data.name;
+      ov.classList.add('visible');
+      ov.setAttribute('aria-hidden', 'false');
+      this.playSfx('popupFish');
+      this.state = State.SPECIES_SHOWCASE;
+      this._showcaseLeft = SPECIES_SHOWCASE_SEC;
+      this._showcaseClickUnlockLeft = SPECIES_SHOWCASE_MIN_CLICK_SEC;
+      this.setHint('新品种图鉴');
+    }
+
+    _finishCatchSequence() {
+      this.stopLineCastSfx();
+      const ov = document.getElementById('speciesOverlay');
+      if (ov) {
+        ov.classList.remove('visible');
+        ov.setAttribute('aria-hidden', 'true');
+      }
+      this._catchAnim = null;
+      this._showcaseFishCard = null;
+      this.coinParticles.length = 0;
+      this._showcaseClickUnlockLeft = 0;
+      this.state = State.IDLE;
+      this.setHint('长按蓄力抛竿');
+    }
+
+    setHint(text) {
+      const el = document.getElementById('hint');
+      if (!el) return;
+      if (text === '点击抛竿') {
+        el.textContent = '';
+        return;
+      }
+      el.textContent = text;
+    }
+
+    unlockAudio() {
+      if (this.audioUnlocked) return;
+      this.audioUnlocked = true;
+      this.playBgm();
+    }
+
+    playBgm() {
+      if (!this.bgmAudio) return;
+      this.bgmAudio.play().catch(() => {});
+    }
+
+    playSfx(name) {
+      if (!this.audioUnlocked) return;
+      const src = AUDIO_URLS[name];
+      if (!src) return;
+      const a = new Audio(src);
+      a.volume = this.sfxVolume[name] != null ? this.sfxVolume[name] : 0.7;
+      a.play().catch(() => {});
+    }
+
+    startLineCastSfx() {
+      if (!this.audioUnlocked || !this.lineCastAudio) return;
+      this.lineCastAudio.currentTime = 0;
+      this.lineCastAudio.play().catch(() => {});
+    }
+
+    stopLineCastSfx() {
+      if (!this.lineCastAudio) return;
+      this.lineCastAudio.pause();
+      this.lineCastAudio.currentTime = 0;
+    }
+
+    endPlay() {
+      if (this.state === State.ENDED) return;
+      this.stopLineCastSfx();
+      const spOv = document.getElementById('speciesOverlay');
+      if (spOv) {
+        spOv.classList.remove('visible');
+        spOv.setAttribute('aria-hidden', 'true');
+      }
+      this._catchAnim = null;
+      this._showcaseFishCard = null;
+      this._pendingSpeciesShowcase = false;
+      this.coinParticles.length = 0;
+      this.state = State.ENDED;
+      const ov = document.getElementById('overlay');
+      if (ov) ov.classList.add('visible');
+      this.setHint('试玩结束');
+    }
+
+    onPointerDown(e) {
+      e.preventDefault();
+      this.unlockAudio();
+      if (this.playTimer.finished || this.state === State.ENDED) return;
+      if (this.state === State.CATCH_SUCCESS) return;
+      if (this.state === State.SPECIES_SHOWCASE) {
+        if (this._showcaseClickUnlockLeft > 0) return;
+        this._finishCatchSequence();
+        return;
+      }
+      if (this.state === State.IDLE) {
+        this.showCastPromptImage = false;
+        this._isChargingCast = true;
+        this._castChargeStartTs = performance.now();
+        this.setHint('按住蓄力，松手抛竿');
+        return;
+      }
+      if (this.state === State.STRUGGLE) {
+        this.progress = Math.min(1, this.progress + this.getStruggleTapGain());
+        this._struggleTapped = true;
+        if (this.progress >= 1) {
+          this.resolveStruggleSuccess();
+        }
+      }
+    }
+
+    onPointerUp(e) {
+      e.preventDefault();
+      if (!this._isChargingCast) return;
+      if (this.playTimer.finished || this.state === State.ENDED) {
+        this._isChargingCast = false;
+        return;
+      }
+      const heldSec = Math.max(0, (performance.now() - this._castChargeStartTs) / 1000);
+      this._isChargingCast = false;
+      this.startCast(heldSec);
+    }
+
+    startCast(heldSec) {
+      this.state = State.CASTING;
+      this.playSfx('hookOut');
+      this.startLineCastSfx();
+      const t = Math.min(1, heldSec / CAST_CHARGE_MAX_SEC);
+      const castRatio = CAST_MIN_RATIO + (CAST_MAX_RATIO - CAST_MIN_RATIO) * t;
+      const castLen = this.h * castRatio;
+      this.rod.setCasting(castLen);
+      this.setHint('收线中… 或等待');
+    }
+
+    tryHitFish() {
+      const x = this.rod.rodBaseX;
+      const tip = this.rod.getTipY();
+      for (let i = 0; i < this.fishes.length; i++) {
+        const f = this.fishes[i];
+        if (f.intersectsPoint(x, tip)) {
+          return f;
+        }
+      }
+      return null;
+    }
+
+    resolveStruggleSuccess() {
+      const fish = this.hookedFish;
+      if (!fish) return;
+      this.totalCatches++;
+      const wasAdvanced = fish.tier === FishTier.ADVANCED;
+      const gain = fish.coinReward;
+      if (wasAdvanced) {
+        const cx = this.w / 2;
+        const cy = this.h * 0.26;
+        this.floatTexts.push(
+          new FloatingText('Perfect!', cx - 30, cy - 10, {
+            fontSize: 46,
+            color: '#fffef0',
+            stroke: 'rgba(180, 60, 200, 0.85)',
+            lineWidth: 5,
+            vy: -125,
+            vx: -35,
+          })
+        );
+        this.floatTexts.push(
+          new FloatingText('+' + COIN_ADVANCED + '!', cx + 40, cy + 38, {
+            fontSize: 56,
+            color: '#ffeb3b',
+            stroke: 'rgba(0,0,0,.65)',
+            lineWidth: 6,
+            vy: -100,
+            vx: 45,
+          })
+        );
+        this.floatTexts.push(
+          new FloatingText('★ EPIC ★', cx, cy + 92, {
+            fontSize: 22,
+            color: '#ff7eb3',
+            stroke: 'rgba(0,0,0,.5)',
+            lineWidth: 3,
+            vy: -70,
+            vx: 0,
+          })
+        );
+      }
+      this.coins += gain;
+      this.totalCoinsCollected += gain;
+      this.playSfx('coinGain');
+      this.updateCoinDisplay();
+
+      const jx = fish._jitterX || 0;
+      const flySx = fish.x + jx + fish.width * 0.5;
+      const flySy = fish.y + fish.height * 0.5;
+      const basket = this.getBasketCenter();
+      const isNewSpecies = !this.discoveredSpecies.has(fish.speciesId);
+      if (isNewSpecies) this.discoveredSpecies.add(fish.speciesId);
+
+      this._showcaseFishCard = isNewSpecies
+        ? {
+            name: fish.speciesName,
+            w: fish.width,
+            h: fish.height,
+            hue: fish.hue,
+            tier: fish.tier,
+            speciesId: fish.speciesId,
+            facingSign: fish.facingSign,
+          }
+        : null;
+      this._pendingSpeciesShowcase = !!isNewSpecies;
+
+      this._catchAnim = {
+        sx: flySx,
+        sy: flySy,
+        ex: basket.x,
+        ey: basket.y,
+        w: fish.width,
+        h: fish.height,
+        hue: fish.hue,
+        tier: fish.tier,
+        speciesId: fish.speciesId,
+        facingSign: fish.facingSign,
+        elapsed: 0,
+        dur: CATCH_FLY_DURATION,
+      };
+
+      this._pendingBasketSnapshot = {
+        w: fish.width,
+        h: fish.height,
+        hue: fish.hue,
+        tier: fish.tier,
+        speciesId: fish.speciesId,
+        facingSign: fish.facingSign,
+      };
+
+      const idx = this.fishes.indexOf(fish);
+      if (idx >= 0) this.fishes.splice(idx, 1);
+
+      this.spawnCoinParticles(flySx, flySy, gain);
+
+      this.hookedFish = null;
+      this.rod.resetLine();
+      this.progress = 0;
+      this.state = State.CATCH_SUCCESS;
+      this.setHint(wasAdvanced ? '进篓中…' : '收进鱼篓…');
+    }
+
+    resolveStruggleFail() {
+      if (this.hookedFish) {
+        this.failStamps.push(
+          new FailStamp(
+            this.hookedFish.x + this.hookedFish.width * 0.5,
+            this.hookedFish.y + this.hookedFish.height * 0.2
+          )
+        );
+        this.hookedFish = null;
+      }
+      this.progress = 0;
+      this.state = State.RETRACTING;
+      this.setHint('失败！收线中…');
+    }
+
+    update(dt) {
+      this._updateFloatingTexts(dt);
+      this._updateFailStamps(dt);
+      if (this.state === State.ENDED || this.playTimer.finished) return;
+
+      if (this.state !== State.CATCH_SUCCESS && this.state !== State.SPECIES_SHOWCASE) {
+        this.playTimer.update(dt);
+      }
+
+      if (this.state === State.IDLE) {
+        this._tickSwimmingFish(dt);
+        return;
+      }
+
+      if (this.state === State.CATCH_SUCCESS) {
+        this._tickSwimmingFish(dt);
+        this._updateCoinParticles(dt);
+        const a = this._catchAnim;
+        if (a) a.elapsed += dt;
+        const flyDone = a && a.elapsed >= a.dur;
+        const coinsDone = this.coinParticles.length === 0;
+        if (flyDone && (coinsDone || (a && a.elapsed > 1.25))) {
+          if (this._pendingBasketSnapshot) {
+            this.addFishToBasket(this._pendingBasketSnapshot);
+            this._pendingBasketSnapshot = null;
+          }
+          if (this._pendingSpeciesShowcase && this._showcaseFishCard) {
+            this._pendingSpeciesShowcase = false;
+            this.openSpeciesShowcase();
+          } else {
+            this._finishCatchSequence();
+          }
+        }
+        return;
+      }
+
+      if (this.state === State.SPECIES_SHOWCASE) {
+        this._tickSwimmingFish(dt);
+        this._showcaseLeft -= dt;
+        this._showcaseClickUnlockLeft = Math.max(0, this._showcaseClickUnlockLeft - dt);
+        if (this._showcaseLeft <= 0) {
+          this._finishCatchSequence();
+        }
+        return;
+      }
+
+      if (this.state === State.CASTING) {
+        this._tickSwimmingFish(dt);
+        const done = this.rod.extend(dt, this.rod.getCastSpeed());
+        const hookOutOfScreen = this.rod.getTipY() <= 0;
+        const hit = this.tryHitFish();
+        if (hit) {
+          this.stopLineCastSfx();
+          this.state = State.STRUGGLE;
+          this.hookedFish = hit;
+          this.progress = 0;
+          this.struggleTimer.start();
+          this.setHint('快速连点！拉鱼上岸');
+          return;
+        }
+        if (done) {
+          this.stopLineCastSfx();
+          this.state = State.RETRACTING;
+          return;
+        }
+        if (hookOutOfScreen) {
+          this.stopLineCastSfx();
+          this.state = State.RETRACTING;
+        }
+        return;
+      }
+
+      if (this.state === State.RETRACTING) {
+        this._tickSwimmingFish(dt);
+        const done = this.rod.retract(dt, this.rod.getRetractSpeed());
+        if (done) {
+          this.state = State.IDLE;
+          this.setHint('点击抛竿');
+        }
+        return;
+      }
+
+      if (this.state === State.STRUGGLE && this.hookedFish) {
+        this._tickSwimmingFish(dt);
+        const f = this.hookedFish;
+        f.updateStruggleJitter(dt);
+        const tapped = !!this._struggleTapped;
+        this._struggleTapped = false;
+
+        this.struggleTimer.update(dt, tapped);
+        if (!tapped) {
+          this.progress = Math.max(0, this.progress - STRUGGLE_DECAY_PER_SEC * dt);
+        }
+
+        if (this.struggleTimer.idleExpired) {
+          this.resolveStruggleFail();
+          return;
+        }
+        if (this.struggleTimer.windowExpired && this.progress < 1) {
+          this.resolveStruggleFail();
+          return;
+        }
+      }
+    }
+
+    draw() {
+      const ctx = this.ctx;
+      const w = this.w;
+      const h = this.h;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#87ceeb');
+      g.addColorStop(0.55, '#4a90b8');
+      g.addColorStop(1, '#2d5a78');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      const struggle = this.state === State.STRUGGLE;
+      this.fishes.forEach((f) => {
+        f.draw(ctx, struggle, f === this.hookedFish);
+      });
+
+      this.drawBasket(ctx);
+
+      if (this.state === State.CATCH_SUCCESS) {
+        this.drawCatchFlyingFish(ctx);
+        this.coinParticles.forEach((p) => p.draw(ctx));
+      }
+
+      if (this.state === State.STRUGGLE) {
+        this.drawStruggleBar(ctx, w);
+      }
+      if (this._isChargingCast && this.state === State.IDLE) {
+        this.drawCastChargeBar(ctx, w);
+      }
+      if (this.showCastPromptImage && this.state === State.IDLE) {
+        this.drawCastPromptImage(ctx, w, h);
+      }
+
+      this.rod.draw(ctx, w, h, this.state, this.getHookFacing());
+
+      this.floatTexts.forEach((ft) => ft.draw(ctx));
+      this.failStamps.forEach((fs) => fs.draw(ctx));
+    }
+
+    drawStruggleBar(ctx, w) {
+      const bw = w * 0.72;
+      const bx = (w - bw) / 2;
+      const by = this.h * 0.62;
+      const bh = 18;
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+      ctx.fillStyle = '#334';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = '#2ecc71';
+      ctx.fillRect(bx, by, bw * this.progress, bh);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('拉扯', w / 2, by + bh + 18);
+    }
+
+    drawCastChargeBar(ctx, w) {
+      const heldSec = Math.max(0, (performance.now() - this._castChargeStartTs) / 1000);
+      const p = Math.min(1, heldSec / CAST_CHARGE_MAX_SEC);
+      const bw = w * 0.72;
+      const bx = (w - bw) / 2;
+      const by = this.h * 0.56;
+      const bh = 16;
+      const hue = 120 * (1 - p);
+      const fillColor = 'hsl(' + hue.toFixed(0) + ', 90%, 50%)';
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+      ctx.fillStyle = 'rgba(30, 40, 55, 0.95)';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(bx, by, bw * p, bh);
+      ctx.strokeStyle = 'rgba(255,255,255,.85)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('蓄力', w / 2, by + bh + 16);
+    }
+
+    drawCastPromptImage(ctx, w, h) {
+      if (!(CAST_PROMPT_IMAGE && CAST_PROMPT_IMAGE.complete && CAST_PROMPT_IMAGE.naturalWidth > 0)) return;
+      const pulse = Math.sin(performance.now() * 0.008);
+      const scale = 1 + pulse * 0.06;
+      const baseW = Math.min(w * 0.56, 300);
+      const imgRatio = CAST_PROMPT_IMAGE.naturalHeight / CAST_PROMPT_IMAGE.naturalWidth;
+      const drawW = baseW * scale;
+      const drawH = drawW * imgRatio;
+      const x = (w - drawW) * 0.5;
+      const y = h * 0.5 - drawH * 0.5 - 22 + pulse * 8;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+      ctx.shadowBlur = 10;
+      ctx.drawImage(CAST_PROMPT_IMAGE, x, y, drawW, drawH);
+      ctx.restore();
+    }
+
+    getHookFacing() {
+      if (this.hookedFish && this.hookedFish.vx) {
+        return this.hookedFish.vx >= 0 ? 1 : -1;
+      }
+      const x = this.rod.rodBaseX;
+      const y = this.rod.getTipY();
+      let nearest = null;
+      let nearestDist2 = Infinity;
+      for (let i = 0; i < this.fishes.length; i++) {
+        const f = this.fishes[i];
+        const fx = f.x + f.width * 0.5;
+        const fy = f.y + f.height * 0.5;
+        const dx = fx - x;
+        const dy = fy - y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < nearestDist2) {
+          nearestDist2 = d2;
+          nearest = f;
+        }
+      }
+      if (nearest && nearest.vx) {
+        return nearest.vx >= 0 ? 1 : -1;
+      }
+      return 1;
+    }
+
+    loop(ts) {
+      if (!this._lastTs) this._lastTs = ts;
+      let dt = (ts - this._lastTs) / 1000;
+      this._lastTs = ts;
+      if (dt > 0.1) dt = 0.1;
+      this.update(dt);
+      this.draw();
+      requestAnimationFrame((t) => this.loop(t));
+    }
+
+    start() {
+      this.playTimer.reset();
+      this.rod.level = 1;
+      this.totalCatches = 0;
+      this.totalCoinsCollected = 0;
+      this.basketFish.length = 0;
+      this.discoveredSpecies.clear();
+      this.fishes.length = 0;
+      for (let i = 0; i < TARGET_SWIMMING_FISH; i++) {
+        const f = new Fish(this.pool);
+        f.spawnAsSwimmer(this);
+        this.fishes.push(f);
+      }
+      this.updateHudTime(this.playTimer.remaining);
+      this.updateCoinDisplay();
+      this.updateUpgradeButton();
+      this.showCastPromptImage = true;
+      this.setHint('点击抛竿');
+      document.getElementById('cta').addEventListener('click', () => {
+        console.log('CTA: 立即下载');
+      });
+      const up = document.getElementById('upgradeBtn');
+      if (up) {
+        up.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.tryUpgradeRod();
+        });
+      }
+      const c = this.canvas;
+      c.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+      c.addEventListener('pointerup', (e) => this.onPointerUp(e));
+      c.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+      c.addEventListener('pointerleave', (e) => this.onPointerUp(e));
+      const speciesOverlay = document.getElementById('speciesOverlay');
+      if (speciesOverlay) {
+        speciesOverlay.addEventListener('pointerdown', (e) => {
+          if (this.state !== State.SPECIES_SHOWCASE) return;
+          if (this._showcaseClickUnlockLeft > 0) return;
+          e.preventDefault();
+          this._finishCatchSequence();
+        });
+      }
+      requestAnimationFrame((t) => this.loop(t));
+    }
+  }
+
+  const game = new Game(document.getElementById('c'));
+  game.start();
+})();
+  </script>
+</body>
+</html>
