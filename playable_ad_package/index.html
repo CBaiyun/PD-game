@@ -1272,11 +1272,21 @@
       this.startCast(heldSec);
     }
 
+    getCastChargeProgress(heldSec) {
+      if (CAST_CHARGE_MAX_SEC <= 0) return 1;
+      const cycle = CAST_CHARGE_MAX_SEC * 2;
+      const m = ((heldSec % cycle) + cycle) % cycle;
+      if (m <= CAST_CHARGE_MAX_SEC) {
+        return m / CAST_CHARGE_MAX_SEC;
+      }
+      return 1 - (m - CAST_CHARGE_MAX_SEC) / CAST_CHARGE_MAX_SEC;
+    }
+
     startCast(heldSec) {
       this.state = State.CASTING;
       this.playSfx('hookOut');
       this.startLineCastSfx();
-      const t = Math.min(1, heldSec / CAST_CHARGE_MAX_SEC);
+      const t = this.getCastChargeProgress(heldSec);
       const castRatio = CAST_MIN_RATIO + (CAST_MAX_RATIO - CAST_MIN_RATIO) * t;
       const castLen = this.h * castRatio;
       this.rod.setCasting(castLen);
@@ -1577,7 +1587,7 @@
 
     drawCastChargeBar(ctx, w) {
       const heldSec = Math.max(0, (performance.now() - this._castChargeStartTs) / 1000);
-      const p = Math.min(1, heldSec / CAST_CHARGE_MAX_SEC);
+      const p = this.getCastChargeProgress(heldSec);
       const bw = w * 0.72;
       const bx = (w - bw) / 2;
       const by = this.h * 0.56;
